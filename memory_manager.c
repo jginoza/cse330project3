@@ -77,11 +77,7 @@ int memory_manager(void) {
     pmd_t* pmd;
     pte_t* pte;
 
-    printk(KERN_INFO "process pid=%d loaded\n", pid);
-
-    /*
-    task = pid_task(find_vpid(pid), PIDTYPE_PID); // get the task_struct of the process with the given pid
-    */
+    task = pid_task(find_vpid(pid), PIDTYPE_PID); //task struct of the process using pid
 
     mm = task->mm; //set mm from mm_struct of process
 
@@ -98,6 +94,8 @@ int memory_manager(void) {
     for (vma = mm->mmap; vma; vma = vma->vm_next) {
         // loop for all pages in all vma
         for (address = vma->vm_start; address < vma->vm_end; address += pageSize) {
+
+            //code from file
             pgd = pgd_offset(mm, address); //get pgd from mm + page addr
             if (pgd_none(*pgd) || pgd_bad(*pgd)) {
                 return;
@@ -128,10 +126,11 @@ int memory_manager(void) {
             }
 
             //if the process page is in working set
-            if (pte_young(*pte)) {
-                wss++;
+            if (pte_present(*pte)) {
+                if (ptep_test_and_clear_young(&vma, address, &ptep)) {  //if page is found, checks if pte was accessed (if true, add to wss)
+                    wss++;
+                }
             }
-            ptep_test_and_clear_young(&vma, address, &ptep); //following being found, clear pte     //may have to move, idk if it belongs here
         }
 
         //multiply by pageSize to make sure its in KB
