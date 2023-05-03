@@ -1,1 +1,2 @@
-# cse330project3
+Cruise Costin 
+Jayden Ginoza 1219073596
