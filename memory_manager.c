@@ -14,8 +14,10 @@
 #include <linux/timekeeping.h>
 #include <linux/mm.h>
 #include <linux/mmtypes.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
 
-static int pageSize = 4096;
+static int pageSize = 4096; //set page size to 4096 bytes, standard memory size
 
 // Define our global variables
 static int pid = 1000; // User ID
@@ -28,6 +30,7 @@ module_param(pid, int, 0);
 
 //10-second timer
 unsigned long timer_interval_ns = 10e9 // 10-second timer
+static struct hrtimer timer;
 
 enum hrtimer_restart no_restart_callback(struct hrtimer* timer)
 {
@@ -83,8 +86,8 @@ int memory_manager(void) {
 
     //timer setup and start for the looping of vma + 
     hrtimer_init(&timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL); //HRTIMER_MODE_REL used for real time
-    timer.function = &no_restart_callback;                  //set timer in regards to not restarting
-    hrtimer_start(&timer, interval, HRTIMER_MODE_REL);      //begin timer with 
+    timer.function = no_restart_callback;                    //set timer to 10 second timer
+    hrtimer_start(&timer, interval, HRTIMER_MODE_REL);       //begin timer 
 
     //variables for the loop
     long start, end, address;
@@ -95,7 +98,7 @@ int memory_manager(void) {
         // loop for all pages in all vma
         for (address = vma->vm_start; address < vma->vm_end; address += pageSize) {
 
-            //code from file
+            //code from given file to run through 5 levels 
             pgd = pgd_offset(mm, address); //get pgd from mm + page addr
             if (pgd_none(*pgd) || pgd_bad(*pgd)) {
                 return;
@@ -125,7 +128,7 @@ int memory_manager(void) {
                 }
             }
 
-            //if the process page is in working set
+            //if the process page is found, thus in working set
             if (pte_present(*pte)) {
                 if (ptep_test_and_clear_young(&vma, address, &ptep)) {  //if page is found, checks if pte was accessed (if true, add to wss)
                     wss++;
@@ -145,7 +148,8 @@ int memory_manager(void) {
 }
 
 void memory_exit(void) {
-    hrtimer_cancel(&timer);     //turn off timer
+    hrtimer_cancel(&timer);     //turn off the timer
+    printk("Exiting\n");
 }
 
 // initialize module entry as memory_manager function
